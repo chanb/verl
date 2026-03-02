@@ -1,39 +1,14 @@
-# Setup apptainer
-```
-apptainer build verl.sif docker://verlai/verl:vllm015.dev
-```
+#!/bin/bash
 
-# Clone Verl
-```
-git clone git@github.com:chanb/verl.git
-cd verl
-git submodule update --init --recursive recipe
-```
-
-# Start interactive job
-```
-module load StdEnv/2023
-module load python/3.10.13
-module load cuda/12.9
-module load apptainer/1.4.5
-```
-
-# Start apptainer
-```
-cd research/hint_without_realizability
-apptainer run --nv -C -W $SLURM_TMPDIR -B .:/workspace -B ~/scratch/datasets:/datasets ~/research/hint_without_realizability/verl.sif
 cd /workspace/verl
-pip install --no-deps -e .
-pip install ipdb
-```
+pip3 install --no-deps -e .
 
-# Download dataset (one-time only)
-```
-python3 examples/data_preprocess/questa.py --local_save_dir /datasets/questa
-```
+if ! test -d /datasets/questa; then
+  echo "generating questa dataset..."
+  python3 /workspace/verl/examples/data_preprocess/questa.py --local_save_dir /datasets/questa
+fi
 
-# Run PPO
-```
+echo "start training..."
 PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
  data.train_files=/datasets/questa/train.parquet \
  data.val_files=/datasets/questa/test.parquet \
@@ -63,5 +38,4 @@ PYTHONUNBUFFERED=1 python3 -m verl.trainer.main_ppo \
  trainer.nnodes=1 \
  trainer.save_freq=10 \
  trainer.test_freq=10 \
- trainer.total_epochs=15 2>&1 | tee verl_demo.log
-```
+ trainer.total_epochs=15
